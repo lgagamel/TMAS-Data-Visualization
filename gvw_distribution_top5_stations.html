@@ -1,0 +1,374 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Title</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+
+        .axis--y path {
+            display: none;
+        }
+
+        .stations {
+            fill: none;
+            stroke: #aaa;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+            stroke-width: 1.5px;
+        }
+
+        .station--hover {
+            stroke: #000;
+            stroke-width: 5px;
+        }
+
+        .focus text {
+            text-anchor: middle;
+            text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
+        }
+
+        .voronoi path {
+            fill: none;
+            pointer-events: all;
+        }
+
+        .voronoi--show path {
+            stroke: red;
+            stroke-opacity: 0.2;
+        }
+
+        #form {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+        }
+    </style>
+
+    <script src="//d3js.org/d3.v4.min.js"></script>
+
+</head>
+
+
+<body>
+
+    <div class="w3-cell-row">
+
+        <div class="w3-container w3-cell" style="width:50%">
+            <button onclick="myFunction('Sec1')" class="w3-btn w3-block w3-black w3-left-align" style="margin-top:50px">Open Section 1</button>
+            <div id="Sec1" class="w3-container w3-hide w3-show">
+                <div id="Demo1">
+                </div>
+                <!--<div class="w3-cell-row">
+                    <button onclick="addAnother('Demo1')" class="w3-btn w3-block w3-purple w3-right-align w3-padding-small">Snapshot>>></button>
+                </div>-->
+            </div>
+
+
+            <!--<button onclick="myFunction('Sec2')" class="w3-btn w3-block w3-black w3-left-align" style="margin-top:50px">Open Section 1</button>
+            <div id="Sec2" class="w3-container w3-hide w3-show">
+                <div id="Demo2">
+                    Test
+                </div>
+                <div class="w3-cell-row">
+                    <button onclick="addAnother('Demo2')" class="w3-btn w3-block w3-purple w3-right-align w3-padding-small">Snapshot>>></button>
+                </div>
+            </div>-->
+
+        </div>
+
+
+
+
+        <div class="w3-container w3-cell" style="width:50%">
+
+            <div id="Clone" class="w3-container w3-hide w3-show">
+
+            </div>
+        </div>
+
+    </div>
+
+
+
+
+
+
+
+    <script>
+        function myFunction(id) {
+            var x = document.getElementById(id);
+            if (x.className.indexOf("w3-show") == -1) {
+                x.className += " w3-show";
+            } else {
+                x.className = x.className.replace(" w3-show", "");
+            }
+        }
+
+        function addAnother(id_) {
+            //var content = d3.select(this.parentNode).html();
+            var content = d3.select("#" +id_).html();
+            d3.select('#Clone').append('div').html(content);
+        }
+
+
+    </script>
+
+    <script>
+
+        var xs = [];
+
+        //var width = 900, height = 500;
+        var margin = { top: 100, right: 150, bottom: 50, left: 150 };
+
+        var svg = d3.select("#Demo1").append("svg")
+            .attr("height", window.innerHeight / 2 - 50)
+            .attr("width", window.innerWidth / 2 - 50);
+
+        var width = svg.attr("width") - margin.left - margin.right,
+            height = svg.attr("height") - margin.top - margin.bottom;
+
+        var g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        var x = d3.scaleLinear()
+            .domain([0, 200])
+            .range([0, width]);
+
+        var y = d3.scaleLinear()
+            .range([height, 0]);
+
+        var voronoi = d3.voronoi()
+            .x(function (d) { return x(d.gvw); })
+            .y(function (d) { return y(d.value); })
+            .extent([[-margin.left, -margin.top], [width + margin.right, height + margin.bottom]]);
+
+        var line = d3.line()
+            .x(function (d) { return x(d.gvw); })
+            .y(function (d) { return y(d.value); });
+
+        d3.csv("4_gvw_distribution_top5_stations.csv").get(function (error, input_data) {
+            var data = [];
+            input_data.columns.slice(4)
+                .forEach(e => xs.push(+e));
+
+            input_data.forEach(function (d) {
+                var c = { name: d.name, empty_load: +d.empty_load, average_payload: +d.average_payload, full_load: +d.full_load, values: null };
+                c.values = [];
+
+                xs.forEach(function (k, i) {
+                    c.values.push(
+                        { station: c, gvw: xs[i], value: +d[k] }
+                    );
+                });
+                data.push(c);
+            });
+
+            console.log("data", data);
+
+
+            //x.domain(d3.extent(xs));
+            //x.domain([0, d3.max(xs)]);
+            x.domain([0, d3.max(xs)]);
+            //y.domain([0, d3.max(data, function (c) { return d3.max(c.values, function (d) { return d.value; }); })]).nice();
+
+            y.domain([0, 30]);
+
+            g.append("g")
+                .append("rect")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .attr("x", - margin.left)
+                .attr("y", - margin.top)
+                .attr("fill", "none")
+                .attr("stroke", "black")
+                .attr("stroke-width", 2);
+
+            g.append("g")
+                .append("text")
+                .attr("x", - margin.left + 10)
+                .attr("y", - margin.top + 20)
+                .attr("dy", "0.32em")
+                .style("fill", "#000")
+                .style("font-weight", "bold")
+                .style("font-size", 20)
+                .text("Distribution of Gross Vehicle Weight");
+
+
+            g.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x))
+                .append("text")
+                .attr("x", width / 2)
+                .attr("y", 30)
+                .attr("dy", "0.32em")
+                .style("fill", "#000")
+                .style("font-weight", "bold")
+                .style("font-size", 12)
+                .text("Gross Vehicle Weight");
+
+
+            g.append("g")
+                .attr("class", "axis axis--y")
+                .call(d3.axisLeft(y).ticks(0))
+                .append("text")
+                .attr("x", -height / 3)
+                .attr("y", -30)
+                .attr("dy", "0.32em")
+                .style("fill", "#000")
+                .style("font-weight", "bold")
+                .style("font-size", 12)
+                .text("Probability Density Estimate")
+                .attr("transform", function (d) {
+                    return "rotate(-90)"
+                });;
+
+            g.append("g")
+                .attr("class", "stations")
+                .selectAll("path")
+                .data(data)
+                .enter().append("path")
+                .attr("d", function (d) { d.line = this; return line(d.values); });
+
+            var focus_station = g.append("g")
+                .attr("class", "focus");
+
+            focus_station.append("text")
+                .attr("fill", "red")
+                .attr("font-weight", 900)
+                .attr("x", 0)
+                .attr("y", -10);
+
+            var focus_avg = g.append("g")
+                .attr("class", "focus");
+
+            focus_avg.append("circle")
+                .attr("r", 3.5)
+                .attr("cy", height)
+                .attr("fill", "red");
+
+            focus_avg.append("text")
+                .attr("fill", "red")
+                .attr("font-weight", 900)
+                .attr("y", 10);
+
+            focus_avg.append("path")
+                .attr("fill", "black")
+                .attr("stroke", "red")
+                .attr("stroke-width", 1.5)
+                .attr("d", "M0,15" + "L0," + height)
+                .style("stroke-dasharray", ("3, 3"))
+                .attr("opacity", 0.5);
+
+
+            var focus_emt = g.append("g")
+                .attr("class", "focus");
+
+            focus_emt.append("circle")
+                .attr("r", 3.5)
+                .attr("cy", height)
+                .attr("fill", "gray");
+
+            focus_emt.append("text")
+                .attr("fill", "gray")
+                .attr("y", 60);
+
+            focus_emt.append("path")
+                .attr("fill", "black")
+                .attr("stroke", "gray")
+                .attr("stroke-width", 1.5)
+                .attr("d", "M0,65" + "L0," + height)
+                .style("stroke-dasharray", ("3, 3"))
+                .attr("opacity", 0.5);
+
+            focus_emt.append('image')
+                .attr('xlink:href', 'empty_truck.png')
+                .attr('x', -25)
+                .attr('y', 0)
+                .attr('width', 50)
+                .attr('height', 50);
+
+
+            var focus_full = g.append("g")
+                .attr("class", "focus");
+
+            focus_full.append("circle")
+                .attr("r", 3.5)
+                .attr("cy", height)
+                .attr("fill", "green");
+
+            focus_full.append("text")
+                .attr("fill", "green")
+                .attr("y", 60);
+
+            focus_full.append("path")
+                .attr("fill", "black")
+                .attr("stroke", "green")
+                .attr("stroke-width", 1.5)
+                .attr("d", "M0,65" + "L0," + height)
+                .style("stroke-dasharray", ("3, 3"))
+                .attr("opacity", 0.5);
+
+            focus_full.append('image')
+                .attr('xlink:href', 'full_truck.png')
+                .attr('x', -25)
+                .attr('y', 0)
+                .attr('width', 50)
+                .attr('height', 50);
+
+            //var focus2 = g.append("g")
+            //    .attr("class", "focus");
+
+            //focus2.append("path")
+            //    .attr("fill", "black")
+            //    .attr("stroke", "red")
+            //    .attr("stroke-width", 1.5)
+            //    .style("stroke-dasharray", ("3, 3"))
+            //    .attr("opacity", 0.5);
+
+            var voronoiGroup = g.append("g")
+                .attr("class", "voronoi");
+
+            voronoiGroup.selectAll("path")
+                .data(voronoi.polygons(d3.merge(data.map(function (d) { return d.values; }))))
+                .enter().append("path")
+                .attr("d", function (d) { return d ? "M" + d.join("L") + "Z" : null; })
+                .on("mouseover", gvw_distribution_mouseover)
+                .on("mouseout", gvw_distribution_mouseout)
+                .attr("cursor", "pointer")
+                .on("click", clone);
+
+            function gvw_distribution_mouseover(d) {
+                //svg.selectAll("path").classed("station--hover", false);
+                d3.select(d.data.station.line).classed("station--hover", true);
+                d.data.station.line.parentNode.appendChild(d.data.station.line);
+                focus_station.transition().duration(500).attr("transform", "translate(" + x(+d.data.station.empty_load +d.data.station.average_payload) + ",0)");
+                focus_station.select("text").text(d.data.station.name);
+                focus_avg.transition().duration(500).attr("transform", "translate(" + x(+d.data.station.empty_load + d.data.station.average_payload) + ",0)");
+                focus_avg.select("text").text("average payload: " + d3.format(",.0f")(+d.data.station.average_payload) + "lbs");
+                focus_emt.transition().duration(500).attr("transform", "translate(" + x(+d.data.station.empty_load) + ",0)");
+                focus_emt.select("text").text("average empty load: " + d3.format(",.0f")(+d.data.station.empty_load) + "lbs");
+                focus_full.transition().duration(500).attr("transform", "translate(" + x(+d.data.station.full_load) + ",0)");
+                focus_full.select("text").text("average full load: " + d3.format(",.0f")(+d.data.station.full_load) + "lbs");
+                //focus2.select("path").attr("d", "M" + x(+d.data.station.average_payload) + ",0" + "L" + x(+d.data.station.average_payload)+"," + height);
+                //focus2.attr("transform", "translate(" + x(d.data.gvw) + ",0)");
+            }
+
+            function gvw_distribution_mouseout(d) {
+                d3.select(d.data.station.line).classed("station--hover", false);
+                //focus.attr("transform", "translate(-100,-100)");
+            }
+
+            function clone() {
+                //var content = d3.select(this.parentNode).html();
+                var content = d3.select("#Demo1").html();
+                d3.select('#Clone').append('div').html(content);
+            }
+
+        });
+    </script>
+
+</body>
+
+
+</html>

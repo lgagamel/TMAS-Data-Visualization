@@ -1,0 +1,367 @@
+﻿<!DOCTYPE html>
+<!-- adapted from mbostock v4 area brush http://bl.ocks.org/mbostock/34f08d5e11952a80609169b7917d4172-->
+<meta charset="utf-8">
+
+<body>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script>
+
+        var margin = { top: 20, right: 30, bottom: 110, left: 140 },
+            margin2 = { top: 430, right: 30, bottom: 30, left: 140 },
+            margin3 = { top: 20, right: 890, bottom: 110, left: 30 },
+            width = 960 - margin.left - margin.right,
+            height = 500 - margin.top - margin.bottom,
+            height2 = 500 - margin2.top - margin2.bottom,
+            width3 = 960 - margin3.left - margin3.right;
+
+        
+
+        //var parseDate = d3.timeParse("%b %Y");
+
+        var x = d3.scaleLinear().range([0, width]),
+            x2 = d3.scaleLinear().range([0, width]),
+            x3 = d3.scaleLinear().range([0, width3]),
+            y = d3.scaleLinear().range([height, 0]),
+            y2 = d3.scaleLinear().range([height2, 0]);
+            y3 = d3.scaleLinear().range([height, 0]);
+
+        var xAxis = d3.axisBottom(x),
+            xAxis2 = d3.axisBottom(x2),
+            yAxis = d3.axisLeft(y);
+            yAxis3 = d3.axisLeft(y3);
+
+        var brush = d3.brushX()
+            .extent([[0, 0], [width, height2]])
+            .on("brush", brushed);
+
+
+        var brush3 = d3.brushY()
+            .extent([[0, 0], [width3, height]])
+            .on("brush", brushed3);
+
+        var svg = d3.select("body").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom);
+        
+        svg.append("defs").append("clipPath")
+            .attr("id", "clip")
+            .append("rect")
+            .attr("width", width)
+            .attr("height", height);
+
+        var focus = svg.append("g")
+            .attr("class", "focus")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        var context = svg.append("g")
+            .attr("class", "context")
+            .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
+
+        var context3 = svg.append("g")
+            .attr("class", "context")
+            .attr("transform", "translate(" + margin3.left + "," + margin3.top + ")");
+
+        var focus_station = svg.append("g")
+            .attr("class", "focus_station")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        focus_station.append("g")
+            .append("text")
+            .attr("fill", "red")
+            .attr("font-weight", 900)
+            .attr("font-size", 20)
+            .attr("text-anchor", "middle")
+            .attr("x", 0)
+            .attr("y", -15);
+
+
+        var focus_sample_size_range = svg.append("g")
+            .attr("class", "focus_station")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        focus_sample_size_range.append("g")
+            .append("text")
+            .attr("fill", "black")
+            .attr("font-weight", 900)
+            .attr("font-size", 20)
+            .attr("text-anchor", "end")
+            .attr("opacity", 0.8)
+            .attr("x", width - 50)
+            .attr("y", 20);
+
+        var focus_empty_load_range = svg.append("g")
+            .attr("class", "focus_station")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        focus_empty_load_range.append("g")
+            .append("text")
+            .attr("fill", "black")
+            .attr("font-weight", 900)
+            .attr("font-size", 20)
+            .attr("text-anchor", "end")
+            .attr("opacity", 0.8)
+            .attr("x", width - 50)
+            .attr("y", 50);
+
+
+        var focus_number_of_stations1 = svg.append("g")
+            .attr("class", "focus_station")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        focus_number_of_stations1.append("g")
+            .append("text")
+            .attr("fill", "black")
+            .attr("font-weight", 900)
+            .attr("font-size", 20)
+            .attr("text-anchor", "end")
+            .attr("opacity", 0.8)
+            .attr("x", width-50)
+            .attr("y", 80);
+
+        var focus_number_of_stations2 = svg.append("g")
+            .attr("class", "focus_station")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        focus_number_of_stations2.append("g")
+            .append("text")
+            .attr("fill", "black")
+            .attr("font-weight", 900)
+            .attr("font-size", 20)
+            .attr("text-anchor", "end")
+            .attr("opacity", 0.8)
+            .attr("x", width-50)
+            .attr("y", 110);
+
+
+        var vol_min = 0,
+            vol_max = 0,
+            empty_load_min = 0,
+            empty_load_max = 0;
+
+        var filtered_data;
+        var all_data;
+
+        d3.csv("empty_load_distribution.csv", type, function (error, data) {
+            console.log("data", data);
+            all_data = data;
+            filtered_data = data;
+
+            if (error) throw error;
+
+            x.domain(d3.extent(data, function (d) { return d.empty_load; }));
+            y.domain([0, d3.max(data, function (d) { return d.vol; }) + 200]);
+            x2.domain(x.domain());
+            y2.domain(y.domain());
+            x3.domain(x.domain());
+            y3.domain(y.domain());
+
+            vol_max = d3.max(data, function (d) { return d.empty_load; });
+            empty_load_max = d3.max(data, function (d) { return d.vol; });
+
+
+            // append scatter plot to main chart area
+            var dots = focus.append("g");
+            dots.attr("clip-path", "url(#clip)");
+            dots.selectAll("dot")
+                .data(data)
+                .enter().append("circle")
+                .attr('class', 'dot')
+                .attr("fill", "gray")
+                .attr("r", 5)
+                .style("opacity", .5)
+                .attr("cx", function (d) { return x(d.empty_load); })
+                .attr("cy", function (d) { return y(d.vol); })
+                .attr("cursor", "pointer")
+                .on("mouseover", station_mouseover)
+                .on("mouseout", station_mouseout);
+    
+
+            focus.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", "translate(0," + height + ")")
+                .call(xAxis);
+
+            focus.append("g")
+                .attr("class", "axis axis--y")
+                .call(yAxis);
+
+            focus.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left)
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text("Sample Size");
+
+            svg.append("text")
+                .attr("transform",
+                    "translate(" + ((width + margin.right + margin.left) / 2) + " ," +
+                    (height + margin.top + margin.bottom) + ")")
+                .style("text-anchor", "middle")
+                .text("Empty Load");
+
+            // append scatter plot to brush chart area
+            var dots = context.append("g");
+            dots.attr("clip-path", "url(#clip)");
+            dots.selectAll("dot")
+                .data(data)
+                .enter().append("circle")
+                .attr('class', 'dotContext')
+                .attr("r", 3)
+                .style("opacity", .5)
+                .attr("cx", function (d) { return x2(d.empty_load); })
+                .attr("cy", function (d) { return y2(d.vol); })
+
+            context.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", "translate(0," + height2 + ")")
+                .call(xAxis2);
+
+            context.append("g")
+                .attr("class", "brush")
+                .call(brush)
+                .call(brush.move, x.range());
+
+
+
+            // append scatter plot to brush chart area
+            var dots_y = context3.append("g");
+            dots_y.attr("clip-path", "url(#clip)");
+            dots_y.selectAll("dot")
+                .data(data)
+                .enter().append("circle")
+                .attr('class', 'dotContext')
+                .attr("r", 3)
+                .style("opacity", .5)
+                .attr("cx", function (d) { return x3(d.empty_load); })
+                .attr("cy", function (d) { return y3(d.vol); })
+
+            context3.append("g")
+                .attr("class", "axis axis--y")
+                .attr("transform", "translate(" + width3 + ",0)")
+                .call(yAxis3);
+
+            context3.append("g")
+                .attr("class", "brush")
+                .call(brush3)
+                .call(brush3.move, y.range());
+
+        });
+
+        //create brush function redraw scatterplot with selection
+        function brushed() {
+            focus.selectAll(".dot")
+                .attr("fill", "gray");
+
+            context.selectAll(".dotContext")
+                .attr("fill", "gray");
+
+            context3.selectAll(".dotContext")
+                .attr("fill", "gray");
+
+            var selection = d3.event.selection;
+            x.domain(selection.map(x2.invert));
+            focus.selectAll(".dot")
+                .attr("cx", function (d) { return x(d.empty_load); })
+                .attr("cy", function (d) { return y(d.vol); });
+            focus.select(".axis--x").call(xAxis);
+
+            
+            empty_load_min = selection.map(x2.invert)[0];
+            empty_load_max = selection.map(x2.invert)[1];
+
+            var count = 0;
+
+            filtered_data = all_data.filter(function (d) { return (d.empty_load >= empty_load_min) && (d.empty_load <= empty_load_max) && (d.vol >= vol_min) && (d.vol <= vol_max) });
+            
+            console.log("filtered_data.length", filtered_data.length);
+            console.log("all_data.length", all_data.length);
+
+            focus_sample_size_range.select("text").text("Sample Size: [" + d3.format(",.0f")(vol_min) + " - " + d3.format(",.0f")(vol_max) + "]");
+            focus_empty_load_range.select("text").text("Sample Size: [" + d3.format(",.0f")(empty_load_min) + " - " + d3.format(",.0f")(empty_load_max) + "]");
+            focus_number_of_stations1.select("text").text("Selected: " + filtered_data.length);
+            focus_number_of_stations2.select("text").text("Filtered Out: " + (all_data.length - filtered_data.length));
+
+
+            focus.selectAll(".dot")
+                .filter(function (d) { return (d.empty_load >= empty_load_min) && (d.empty_load <= empty_load_max) && (d.vol >= vol_min) && (d.vol <= vol_max) })
+                .attr("fill", "red");
+
+            context.selectAll(".dotContext")
+                .filter(function (d) { return (d.empty_load >= empty_load_min) && (d.empty_load <= empty_load_max) && (d.vol >= vol_min) && (d.vol <= vol_max) })
+                .attr("fill", "red");
+
+            context3.selectAll(".dotContext")
+                .filter(function (d) { return (d.empty_load >= empty_load_min) && (d.empty_load <= empty_load_max) && (d.vol >= vol_min) && (d.vol <= vol_max) })
+                .attr("fill", "red");
+        }
+
+        function brushed3() {
+            focus.selectAll(".dot")
+                .attr("fill", "gray");
+
+            context.selectAll(".dotContext")
+                .attr("fill", "gray");
+
+            context3.selectAll(".dotContext")
+                .attr("fill", "gray");
+
+            var selection = d3.event.selection;
+            y.domain([selection.map(y3.invert)[1], selection.map(y3.invert)[0]]);
+            focus.selectAll(".dot")
+                .attr("cx", function (d) { return x(d.empty_load); })
+                .attr("cy", function (d) { return y(d.vol); });
+            focus.select(".axis--y").call(yAxis);
+
+            vol_min = selection.map(y3.invert)[1];
+            vol_max = selection.map(y3.invert)[0];
+
+            focus.selectAll(".dot")
+                .filter(function (d) { return (d.empty_load >= empty_load_min) && (d.empty_load <= empty_load_max) && (d.vol >= vol_min) && (d.vol <= vol_max) })
+                .attr("fill", "red");
+
+            context.selectAll(".dotContext")
+                .filter(function (d) { return (d.empty_load >= empty_load_min) && (d.empty_load <= empty_load_max) && (d.vol >= vol_min) && (d.vol <= vol_max) })
+                .attr("fill", "red");
+
+            context3.selectAll(".dotContext")
+                .filter(function (d) { return (d.empty_load >= empty_load_min) && (d.empty_load <= empty_load_max) && (d.vol >= vol_min) && (d.vol <= vol_max) })
+                .attr("fill", "red");
+
+
+            filtered_data = all_data.filter(function (d) { return (d.empty_load >= empty_load_min) && (d.empty_load <= empty_load_max) && (d.vol >= vol_min) && (d.vol <= vol_max) });
+
+            console.log("filtered_data.length", filtered_data.length);
+            console.log("all_data.length", all_data.length);
+
+            focus_sample_size_range.select("text").text("Sample Size: [" + d3.format(",.0f")(vol_min) + " - " + d3.format(",.0f")(vol_max) + "]");
+            focus_empty_load_range.select("text").text("Sample Size: [" + d3.format(",.0f")(empty_load_min) + " - " + d3.format(",.0f")(empty_load_max) + "]");
+            focus_number_of_stations1.select("text").text("Selected: " + filtered_data.length);
+            focus_number_of_stations2.select("text").text("Filtered Out: " + (all_data.length - filtered_data.length));
+
+        }
+
+        function type(d) {
+            d.station = d.station;
+            d.empty_load = +d.empty_load;
+            d.vol = +d.vol;
+            return d;
+        }
+
+        function station_mouseover(d) {            
+            //d3.select(this).attr("fill", "red");
+            focus_station.transition().duration(50).attr("transform", "translate(" + (x(d.empty_load) + margin.left) + "," + (y(d.vol) + margin.top) + ")");
+            focus_station.select("text").text(d.station + ' (Sample Size: ' + d3.format(",.0f")(+d.vol) + ', Empty Load: ' + d3.format(",.0f")(+d.empty_load) + 'lbs)');
+        }
+
+
+        function station_mouseout(d) {
+            //d3.select(this).attr("fill", "gray");
+        }
+        
+        function filter_test() {
+            // Add the scatterplot
+            
+        }
+    </script>
+</body>
